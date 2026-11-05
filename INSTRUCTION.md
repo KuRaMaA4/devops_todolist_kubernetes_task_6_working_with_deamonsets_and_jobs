@@ -1,11 +1,17 @@
 # ToDo app: DaemonSet and CronJob
 
-Both new manifests live in the `mateapp` namespace and call the ToDo app through its ClusterIP service `todoapp-service` in the `todoapp` namespace, using the full DNS name `todoapp-service.todoapp.svc.cluster.local`.
+All manifests used in this task live in the `mateapp` namespace: the ToDo app Deployment, its ClusterIP service `todoapp-service`, the DaemonSet and the CronJob. The DaemonSet and the CronJob call the app through the service DNS name `todoapp-service.mateapp.svc.cluster.local`.
+
+### Why `ikulyk404/busyboxplus:curl`
+
+The task asks for the `busyboxplus:curl` container. There is no official `busyboxplus` image on Docker Hub, and the original `radial/busyboxplus:curl` is stored in the old Docker manifest v1 format, which containerd v2.1+ (used by current Docker Desktop / kind clusters) refuses to pull (`ErrImagePull`). `ikulyk404/busyboxplus:curl` is a busybox + curl image published in the current format (it pulls and runs on containerd v2.1+), and it is already used by `.infrastructure/busybox.yml` in this repository.
 
 ## 1. Deploy the ToDo app and its ClusterIP service
 
+If the `mateapp` namespace already exists, `kubectl create namespace` prints `AlreadyExists`: this is fine, continue with the `apply` commands.
+
 ```bash
-kubectl apply -f .infrastructure/namespace.yml
+kubectl create namespace mateapp
 kubectl apply -f .infrastructure/deployment.yml
 kubectl apply -f .infrastructure/clusterIp.yml
 ```
@@ -13,18 +19,15 @@ kubectl apply -f .infrastructure/clusterIp.yml
 Wait until the app pods are ready (the readiness probe passes ~30 seconds after start):
 
 ```bash
-kubectl get pods -n todoapp
+kubectl get pods -n mateapp -l app=todoapp
 ```
 
 ## 2. Deploy the DaemonSet and the CronJob
 
 ```bash
-kubectl create namespace mateapp
 kubectl apply -f .infrastructure/daemonset.yml
 kubectl apply -f .infrastructure/cronjob.yml
 ```
-
-If the `mateapp` namespace already exists, `kubectl create namespace` prints `AlreadyExists`: this is fine, continue with the `apply` commands.
 
 Check that both objects were created:
 

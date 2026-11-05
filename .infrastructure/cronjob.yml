@@ -19,7 +19,7 @@ spec:
             command:
             - /bin/sh
             - -c
-            - curl -sf http://todoapp-service.todoapp.svc.cluster.local/api/health
+            - curl -sf http://todoapp-service.mateapp.svc.cluster.local/api/health
             resources:
               requests:
                 cpu: 10m

@@ -22,7 +22,7 @@ spec:
         - -c
         - |
           while true; do
-            echo "$(date) $(curl -s http://todoapp-service.todoapp.svc.cluster.local/api/health)"
+            echo "$(date) $(curl -s http://todoapp-service.mateapp.svc.cluster.local/api/health)"
             sleep 5
           done
         resources:
