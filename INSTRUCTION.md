@@ -2,9 +2,35 @@
 
 All manifests used in this task live in the `mateapp` namespace: the ToDo app Deployment, its ClusterIP service `todoapp-service`, the DaemonSet and the CronJob. The DaemonSet and the CronJob call the app through the service DNS name `todoapp-service.mateapp.svc.cluster.local`.
 
-### Why `ikulyk404/busyboxplus:curl`
+### Note about the `busyboxplus:curl` image
 
-The task asks for the `busyboxplus:curl` container. There is no official `busyboxplus` image on Docker Hub, and the original `radial/busyboxplus:curl` is stored in the old Docker manifest v1 format, which containerd v2.1+ (used by current Docker Desktop / kind clusters) refuses to pull (`ErrImagePull`). `ikulyk404/busyboxplus:curl` is a busybox + curl image published in the current format (it pulls and runs on containerd v2.1+), and it is already used by `.infrastructure/busybox.yml` in this repository.
+Both manifests use `busyboxplus:curl`, as required by the task. Without a registry prefix Kubernetes looks for the official image `docker.io/library/busyboxplus:curl`, which does not exist, so the pods fail to start. Real events from `kubectl describe pod -n mateapp -l app=todoapp-curl`:
+
+```
+Normal   Pulling  kubelet  Pulling image "busyboxplus:curl"
+Warning  Failed   kubelet  Failed to pull image "busyboxplus:curl": failed to pull and unpack image "docker.io/library/busyboxplus:curl": failed to resolve reference "docker.io/library/busyboxplus:curl": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
+Warning  Failed   kubelet  Error: ErrImagePull
+Normal   BackOff  kubelet  Back-off pulling image "busyboxplus:curl"
+Warning  Failed   kubelet  Error: ImagePullBackOff
+```
+
+The original community image `radial/busyboxplus:curl` does not help on current clusters either: it is stored in the old Docker manifest v1 format, which containerd v2.1+ (current Docker Desktop / kind) refuses to pull.
+
+To make the DaemonSet and the CronJob work, use `ikulyk404/busyboxplus:curl`, a busybox + curl image in the current format, already used by `.infrastructure/busybox.yml` in this repository. Change it in the running cluster:
+
+```bash
+kubectl set image daemonset/todoapp-curl busybox=ikulyk404/busyboxplus:curl -n mateapp
+kubectl patch cronjob todoapp-health -n mateapp --type='json' \
+  -p='[{"op":"replace","path":"/spec/jobTemplate/spec/template/spec/containers/0/image","value":"ikulyk404/busyboxplus:curl"}]'
+```
+
+or in the files before `kubectl apply` (macOS; on Linux use `sed -i` without `''`):
+
+```bash
+sed -i '' 's#image: busyboxplus:curl#image: ikulyk404/busyboxplus:curl#' .infrastructure/daemonset.yml .infrastructure/cronjob.yml
+```
+
+With `ikulyk404/busyboxplus:curl` the DaemonSet logs show `Health OK` every 5 seconds and the CronJob runs complete successfully (see the validation sections below).
 
 ## 1. Deploy the ToDo app and its ClusterIP service
 

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: busybox
-        image: ikulyk404/busyboxplus:curl
+        image: busyboxplus:curl
         command:
         - /bin/sh
         - -c
